@@ -1,0 +1,8 @@
+dash==2.14.2
+latex2sympy2==1.9.1
+numba==0.58.1
+numpy==1.26.3
+pandas==2.2.0
+plotly==5.18.0
+scipy==1.12.0
+sympy==1.12

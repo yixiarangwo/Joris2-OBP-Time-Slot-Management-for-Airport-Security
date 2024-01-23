@@ -1,0 +1,10 @@
+- Needs to be done:
+Simulation implementation
+Making analysis of simulation
+
+- Ideas:
+On analysis tab have a "run" button from which simulation is started.
+Next to the "run" buttom have input for submitting the amount of simulations run.
+Make time slots savable, so they can be loaded later.
+Add dropdown menu next to latex input for standard distributions (replace textarea latex with distr).
+Combine importables and inputs tab into one
