@@ -45,7 +45,8 @@ def notifyImportFile(n_intervals):
 @callback(
     Output({"section": "intermediate", "type": "distribution", "index": "formula-info"}, "data",
            allow_duplicate = True),
-    Output({"section": "intermediate", "type": "distribution", "index": "test-info"},    "data"),
+    Output({"section": "intermediate", "type": "parameters",   "index": "sample-info"},  "data"),
+    Output({"section": "intermediate", "type": "parameters",   "index": "test-info"},    "data"),
     
     Input({"section": "importables", "type": "button", "index": "server-dist"}, "n_clicks"),
     
@@ -61,11 +62,28 @@ def notifyImportFile(n_intervals):
     prevent_initial_call = True
 )
 def storeServiceDistInfo(n_clicks, latexExpression, lower, upper, amountSamples, sigma, burnIn, lowerExpansion, upperExpansion):
-    formulaInfo = {"formula": latexExpression, "lower": lower, "upper": upper, "initial": ""}
-    testInfo = {"amount-test-samples": amountSamples, "sigma": sigma, 
-                "burn-in": burnIn, "lower-bounds-expansion": lowerExpansion,
-                "upper-bounds-expansion": upperExpansion}
-    return formulaInfo, testInfo
+    # Store distribution info
+    formulaInfo = {
+        "formula": latexExpression, 
+        "lower": lower, 
+        "upper": upper, 
+        "initial": ""
+    }
+
+    # Store sampling info
+    samplesInfo = {
+        "sigma": sigma, 
+        "lower-bounds-expansion": lowerExpansion,
+        "upper-bounds-expansion": upperExpansion
+    }
+
+    # Store info for testing sampling info
+    testInfo = {
+        "amount-test-samples": amountSamples, 
+        "burn-in": burnIn, 
+    }
+    
+    return formulaInfo, samplesInfo, testInfo
 
 
 # Update LaTeX version of inputted distribution live
@@ -102,16 +120,20 @@ def showLaTeX(latexExpression, prevExpression):
     Output({"section": "intermediate", "type": "distribution", "index": "formula-info"}, "data"),
 
     Input({"section": "intermediate", "type": "distribution", "index": "formula-info"}, "data"),
-    Input({"section": "intermediate", "type": "distribution", "index": "test-info"},    "data"),
+    Input({"section": "intermediate", "type": "parameters",   "index": "sample-info"},  "data"),
+    Input({"section": "intermediate", "type": "parameters",   "index": "test-info"},    "data"),
     
     State({"section": "importables", "type": "graph", "index": "sim-service"}, "style"),
     background = True,
     prevent_initial_call = True
 )
-def plotServiceTimes(formulaInfo, testInfo, style):
-    # Get test sample of service times
+def plotServiceTimes(formulaInfo, sampleData, testInfo, style):
+    # Extract info
     latexExpression, lower, upper, initial = formulaInfo.values()
-    amountSamples, sigma, burnIn, lowerExpansion, upperExpansion = testInfo.values()
+    sigma, lowerExpansion, upperExpansion = sampleData.values()
+    amountSamples, burnIn = testInfo.values()
+
+    # Sample service times for testing
     testSample, initial = metropolisHastings(latexExpression, amountSamples, sigma, burnIn,
                                              lower, upper, lowerExpansion, upperExpansion)
 
