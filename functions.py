@@ -45,13 +45,13 @@ import plotly.graph_objs as go
 import numpy as np
 
 def create_plotly_histogram(arrival_df):
-    # 将 ArrivalTime 从秒转换为小时
+    # Convert ArrivalTime from seconds to hours
     arrival_times_in_hours = arrival_df['ArrivalTime'] / 3600
 
-    # 创建直方图
+    # Create histograms
     hist_data = go.Histogram(
         x=arrival_times_in_hours,
-        nbinsx=24,  # 将一天分为24个小时
+        nbinsx=24, 
         name='Histogram',
         marker=dict(
             color='blue',
@@ -63,24 +63,24 @@ def create_plotly_histogram(arrival_df):
         opacity=0.75
     )
 
-    # 创建图表对象
+    # Create chart objects
     fig = go.Figure(data=[hist_data])
 
-    # 更新图表布局
+    # Update the chart layout
     fig.update_layout(
-        title_text='Distribution of Passenger Arrival Times',  # 标题
-        xaxis_title_text='Time of Day (Hours)',  # X轴标题
-        yaxis_title_text='Number of Passengers',  # Y轴标题
-        bargap=0.2,  # 直方图条间距
+        title_text='Distribution of Passenger Arrival Times',  
+        xaxis_title_text='Time of Day (Hours)',  
+        yaxis_title_text='Number of Passengers',  
+        bargap=0.2, 
         xaxis=dict(
             tickmode='linear',
             tick0=0,
-            dtick=1,  # 每1小时一个刻度
+            dtick=1,  
         ),
-        plot_bgcolor='white'  # 背景颜色
+        plot_bgcolor='white'  
     )
 
-    # 添加网格线
+    
     fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgrey')
     fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgrey')
 
@@ -93,16 +93,16 @@ import plotly.graph_objs as go
 def create_time_interval_plot(df):
     fig = go.Figure()
 
-    # 添加第一个时间序列
+    
     fig.add_trace(go.Scatter(
         x=df['Time in hour'],
         y=df['Average Waiting Time'],
         mode='markers+lines',
-        name='Average Waiting Time',  # 用于图例的标签
+        name='Average Waiting Time', 
         marker=dict(color='blue', size=7)
     ))
 
-    # 添加第二个时间序列
+    
     fig.add_trace(go.Scatter(
         x=df['Time in hour'],
         y=df['Average Virtual Queue Waiting Time'],
@@ -111,7 +111,7 @@ def create_time_interval_plot(df):
         marker=dict(color='red', size=7)
     ))
 
-    # 添加第三个时间序列
+    
     fig.add_trace(go.Scatter(
         x=df['Time in hour'],
         y=df['Average Normal Queue Waiting Time'],
@@ -120,7 +120,7 @@ def create_time_interval_plot(df):
         marker=dict(color='green', size=7)
     ))
 
-    # 更新图表布局
+    
     fig.update_layout(
         title='Average Waiting Time at Security Check (per 15-minute Interval)',
         xaxis_title='Time Interval',
@@ -128,7 +128,7 @@ def create_time_interval_plot(df):
         xaxis=dict(tickangle=45),
         margin=dict(l=20, r=20, t=20, b=20),
         paper_bgcolor="LightSteelBlue",
-        showlegend=True  # 显示图例
+        showlegend=True  
     )
 
     return fig
