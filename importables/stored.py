@@ -7,7 +7,6 @@ stored = [
     dcc.Store(id = {"section": "intermediate", "type": "dataframe", "index": "lanes"},        storage_type = "session", data = ''),
     dcc.Store(id = {"section": "intermediate", "type": "dataframe", "index": "service-test"}, storage_type = "session", data = ''),
     
-    dcc.Store(id = {"section": "intermediate", "type": "distribution", "index": "formula-info"}, storage_type = "session", data = ''),
     dcc.Store(id = {"section": "intermediate", "type": "parameters", "index": "sample-info"},    storage_type = "session", data = ''),
     dcc.Store(id = {"section": "intermediate", "type": "parameters", "index": "test-info"},      storage_type = "session", data = ''),
 

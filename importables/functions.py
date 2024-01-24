@@ -9,7 +9,7 @@ from latex2sympy2 import latex2sympy
 
 
 # Function to parse content from csv-file to dataframe
-def parseContents(contents, structure = "records"):#, fileName):
+def parseContents(contents, structure = "list"):
     # Assure input format
     if not isinstance(contents, list):
         contents = [contents]
@@ -35,34 +35,35 @@ def parseContents(contents, structure = "records"):#, fileName):
 
 
 # Function to parse LaTeX expression to numpy function
-def latexToNumpy(latexExpression, lower = None, upper = None, lowerExpansion = 0, upperExpansion = 0):
-	try:
-	    sympFunc = latex2sympy(latexExpression)
-	    numpFunc = sp.lambdify('x', sympFunc, "numpy")
+def latexToNumpy(latex, lower = None, upper = None, 
+                 lowerExpansion = 0, upperExpansion = 0, **kwargs):
+    try:
+        sympFunc = latex2sympy(latex)
+        numpFunc = sp.lambdify('x', sympFunc, "numpy")
 
-	    # Add lower and upper bound to function
-	    if lower is not None and upper is not None:
-	        lower -= lowerExpansion
-	        upper += upperExpansion
-	        distFunc = lambda x: numpFunc(x) if x >= lower and x <= upper else 0
-	    elif lower is not None:
-	        lower -= lowerExpansion
-	        distFunc = lambda x: numpFunc(x) if x >= lower else 0
-	    elif upper is not None:
-	        upper += upperExpansion
-	        distFunc = lambda x: numpFunc(x) if x <= upper else 0
-	    else:
-	        distFunc = lambda x: numpFunc(x)
-	    
-	    return np.vectorize(distFunc)
-			
-	except Exception as e:
-		return None
+        # Add lower and upper bound to function
+        if lower is not None and upper is not None:
+            lower -= lowerExpansion
+            upper += upperExpansion
+            distFunc = lambda x: numpFunc(x) if x >= lower and x <= upper else 0
+        elif lower is not None:
+            lower -= lowerExpansion
+            distFunc = lambda x: numpFunc(x) if x >= lower else 0
+        elif upper is not None:
+            upper += upperExpansion
+            distFunc = lambda x: numpFunc(x) if x <= upper else 0
+        else:
+            distFunc = lambda x: numpFunc(x)
+
+        return np.vectorize(distFunc)
+
+    except Exception as e:
+        return None
 
 
 # Draw from given LaTeX function with Metropolis-Hastings algorithm for service times in simulation
-def metropolisHastings(latexExpression, amountSamples, sigma, burnIn = 1000, 
-                       lower = None, upper = None, lowerExpansion = 0, upperExpansion = 0):
+def metropolisHastings(latex, amountSamples, sigma, lower, upper, 
+                       lowerExpansion, upperExpansion, burnIn = 0, **kwargs):
 	"""
 	Implementing the Metropolis-Hastings algorithm to draw samples from random continuous function
 	This function uses random walk where sigma is adjustable in case it is too small/large for the distribution
@@ -88,10 +89,10 @@ def metropolisHastings(latexExpression, amountSamples, sigma, burnIn = 1000,
 	"""
 
 	# Convert latexExpression to vectorized numpy function with bounds extended by boundSpace
-	densityFunc = latexToNumpy(latexExpression, lower, upper, lowerExpansion, upperExpansion)
+	densityFunc = latexToNumpy(latex, lower, upper, lowerExpansion, upperExpansion)
 
 	if densityFunc is None:
-	    return None
+	    return None, ""
 	
 	# Rough estimation for maximum value as initial value algorithm and
 	# make lambda func for checking if candidate within bounds

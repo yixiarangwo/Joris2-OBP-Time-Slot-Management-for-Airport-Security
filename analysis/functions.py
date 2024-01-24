@@ -38,6 +38,7 @@ def create_plotly_histogram(arrival_df):
     )
 
     
+<<<<<<< HEAD
     fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgrey')
     fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgrey')
 
@@ -107,3 +108,62 @@ def create_time_interval_without_plot(df):
         showlegend=False
     )
     return fig
+=======
+		# Determine if candidate is accepted
+		if np.random.uniform() < probCandidate / probInitial:
+			if checkBounds(initial): 
+			    samples[accepted] = initial
+			    accepted += 1
+			initial = candidate
+	
+	# Shuffle and return
+	samples = np.asarray(samples)
+	np.random.shuffle(samples)
+	return samples
+
+# Draw from given LaTeX function with Metropolis-Hastings algorithm for service times in simulation
+def MHgenerator(latexExpression, amountSamples, sigma, initial, lower, upper, lowerExpansion, upperExpansion):
+	"""
+	Same function as in ./importables/functions.py but made as a generator.
+	"""
+
+	# Convert latexExpression to vectorized numpy function with bounds extended by boundSpace
+	densityFunc = latexToNumpy(latexExpression, lower, upper, lowerExpansion, upperExpansion)
+	
+	# Make lambda func for checking if candidate is within bounds
+	if lower is not None and upper is not None:
+		checkBounds = lambda x: x >= lower and x <= upper
+	elif lower is not None:
+		checkBounds = lambda x: x >= lower
+	elif upper is not None:
+		checkBounds = lambda x: x <= upper
+	else:
+		checkBounds = lambda x: True
+
+	# Create samples
+	samples = np.zeros(amountSamples)
+	accepted = 0
+	
+	while accepted < amountSamples:
+		# Get candidate
+		candidate = initial + np.random.normal(scale = sigma)
+		
+		# Calculate criterion from ratio (proportional) probs
+		probInitial = densityFunc(initial)
+		probCandidate = densityFunc(candidate)
+    
+		# Determine if candidate is accepted
+		if np.random.uniform() < probCandidate / probInitial:
+			if checkBounds(initial): 
+			    samples[accepted] = initial
+			    accepted += 1
+			initial = candidate
+	
+	# Shuffle samples
+	samples = np.asarray(samples)
+	np.random.shuffle(samples)
+
+	# Yield shuffled samples
+	for i in range(amountSamples):
+	    yield samples[i]
+>>>>>>> 137bfe79c5e68be04e44f4b48729feecf7e97afd
