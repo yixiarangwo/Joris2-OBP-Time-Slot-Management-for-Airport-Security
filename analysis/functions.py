@@ -1,66 +1,109 @@
-from importables.functions import latexToNumpy
-
+﻿import plotly.graph_objs as go
 import numpy as np
 
-# Draw from given LaTeX function with Metropolis-Hastings algorithm for service times in simulation
-def MHsamples(latexExpression, amountSamples, sigma, initial, lower, upper, lowerExpansion, upperExpansion):
-	"""
-	Implementing the Metropolis-Hastings algorithm to draw samples from random continuous function
-	This function uses random walk where sigma is adjustable in case it is too small/large for the distribution
+def create_plotly_histogram(arrival_df):
+    # Convert ArrivalTime from seconds to hours
+    arrival_times_in_hours = arrival_df['ArrivalTime'] / 3600
 
-	latexExpression: inputted latex string which will be converted to usable function
-	amountSamples: amount of samples that will outputted
-	sigma: "step size" of jump distribution, here a normal distribution with mean of previous accepted candidate
-	inital: the initial value used for the algorithm determined earlier by testing the parameters
-	lower: lower bound of given distribution. If None, lower bound is 'minus infinity'
-	upper: upper bound of given distribution. If None, upper bound is 'infinity'
-	lowerExpansion: the amount lower bound is extended for candidates but not for samples
-	upperExpansion: the amount upper bound is extended for candidates but not for samples
+    # Create histograms
+    hist_data = go.Histogram(
+        x=arrival_times_in_hours,
+        nbinsx=24, 
+        name='Histogram',
+        marker=dict(
+            color='blue',
+            line=dict(
+                color='black',
+                width=2
+            )
+        ),
+        opacity=0.75
+    )
 
-	There are three downsides of this sampling method:
-	- The algorithm needs a "burn in" period when the initial value is in a region of low probability
-	- When a distribution has bounds, less samples will be drawn from the edges
-	- Samples are autocorrelated
-	
-	Therefore, three extra steps are added to the original algorithm, each respectively alleviating the problems from above:
-	- Get an estimate of local/global maximum priorly and use this as initial value, reducing the burn in period
-	- Accepted candidates can be outside of bounds (to a given degree) but these are not outputted in sample list
-	- Shuffle the samples posteriorly to (hopefully) reduce the impact of autocorrelation
-	"""
+    # Create chart objects
+    fig = go.Figure(data=[hist_data])
 
-	# Convert latexExpression to vectorized numpy function with bounds extended by boundSpace
-	densityFunc = latexToNumpy(latexExpression, lower, upper, lowerExpansion, upperExpansion)
-	
-	# Make lambda func for checking if candidate is within bounds
-	if lower is not None and upper is not None:
-		checkBounds = lambda x: x >= lower and x <= upper
-	elif lower is not None:
-		checkBounds = lambda x: x >= lower
-	elif upper is not None:
-		checkBounds = lambda x: x <= upper
-	else:
-		checkBounds = lambda x: True
+    # Update the chart layout
+    fig.update_layout(
+        title_text='Distribution of Passenger Arrival Times',  
+        xaxis_title_text='Time of Day (Hours)',  
+        yaxis_title_text='Number of Passengers',  
+        bargap=0.2, 
+        xaxis=dict(
+            tickmode='linear',
+            tick0=0,
+            dtick=1,  
+        ),
+        plot_bgcolor='white'  
+    )
 
-	# Create samples
-	samples = np.zeros(amountSamples)
-	accepted = 0
-	
-	while accepted < amountSamples:
-		# Get candidate
-		candidate = initial + np.random.normal(scale = sigma)
-		
-		# Calculate criterion from ratio (proportional) probs
-		probInitial = densityFunc(initial)
-		probCandidate = densityFunc(candidate)
     
-		# Determine if candidate is accepted
-		if np.random.uniform() < probCandidate / probInitial:
-			if checkBounds(initial): 
-			    samples[accepted] = initial
-			    accepted += 1
-			initial = candidate
-	
-	# Shuffle and return
-	samples = np.asarray(samples)
-	np.random.shuffle(samples)
-	return samples
+    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgrey')
+    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgrey')
+
+    return fig
+
+import plotly.graph_objs as go
+
+import plotly.graph_objs as go
+
+def create_time_interval_plot(df):
+    fig = go.Figure()
+
+    
+    fig.add_trace(go.Scatter(
+        x=df['Time in hour'],
+        y=df['Average Waiting Time'],
+        mode='markers+lines',
+        name='Average Waiting Time', 
+        marker=dict(color='blue', size=7)
+    ))
+
+    
+    fig.add_trace(go.Scatter(
+        x=df['Time in hour'],
+        y=df['Average Virtual Queue Waiting Time'],
+        mode='markers+lines',
+        name='Average Virtual Queue Waiting Time',
+        marker=dict(color='red', size=7)
+    ))
+
+    
+    fig.add_trace(go.Scatter(
+        x=df['Time in hour'],
+        y=df['Average Normal Queue Waiting Time'],
+        mode='markers+lines',
+        name='Average Normal Queue Waiting Time',
+        marker=dict(color='green', size=7)
+    ))
+
+    
+    fig.update_layout(
+        title='Average Waiting Time at Security Check (per 15-minute Interval)',
+        xaxis_title='Time Interval',
+        yaxis_title='Average Waiting Time (second)',
+        xaxis=dict(tickangle=45),
+        margin=dict(l=20, r=20, t=20, b=20),
+        paper_bgcolor="LightSteelBlue",
+        showlegend=True  
+    )
+
+    return fig
+
+def create_time_interval_without_plot(df):
+    fig = go.Figure(data=go.Scatter(
+        x=df['Time in hour'],
+        y=df['Average Waiting Time'],
+        mode='markers+lines',  
+        marker=dict(color='blue', size=7)  
+    ))
+    fig.update_layout(
+        title='Average Waiting Time at Security Check (per 15-minute Interval)',
+        xaxis_title='Time Interval',
+        yaxis_title='Average Waiting Time (second)',
+        xaxis=dict(tickangle=45),
+        margin=dict(l=20, r=20, t=20, b=20),
+        paper_bgcolor="LightSteelBlue",
+        showlegend=False
+    )
+    return fig
