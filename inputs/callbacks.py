@@ -114,23 +114,18 @@ def saveTimeSlots(n_clicks, capacities, timeSlotsHours, timeSlotsMinutes, timeSl
 
     # Save time slot info per flight, giving a list with {capacity, unix start time} dicts
     timeSlotInfo = {}
-
     [
-        timeSlotInfo[capacity["id"]["flight"]].append(
-            {
-                "capacity": capacity["value"],
-                "start": time24ToUnix(hours["value"], minutes["value"])
-            }
+        (
+            timeSlotInfo[capacity["id"]["flight"]]["capacity"].append(capacity["value"]),
+            timeSlotInfo[capacity["id"]["flight"]]["start"].append(time24ToUnix(hours["value"], minutes["value"]))
         )
         if capacity["id"]["flight"] in timeSlotInfo
         else timeSlotInfo.update(
             {
-                capacity["id"]["flight"]: [
-                    {
-                        "capacity": capacity["value"],
-                        "start": time24ToUnix(hours["value"], minutes["value"])
-                    }
-                ]
+                capacity["id"]["flight"]: {
+                    "capacity": [capacity["value"]],
+                    "start":    [time24ToUnix(hours["value"], minutes["value"])]
+                }
             }
         )
         for capacity, hours, minutes in zip(capacities, startHours, startMinutes)
@@ -143,13 +138,13 @@ def saveTimeSlots(n_clicks, capacities, timeSlotsHours, timeSlotsMinutes, timeSl
         for flightNumber in timeSlotInfo
         if any(
             [
-                slot["capacity"] ==  "" and slot["start"] != -1
-                or
-                slot["capacity"] !=  "" and slot["start"] == -1
-                for slot in timeSlotInfo[flightNumber]
+                (cap == "" and start != -1) or (cap != "" and start == -1)
+                for cap, start in zip(timeSlotInfo[flightNumber]["capacity"], timeSlotInfo[flightNumber]["start"])
             ]
         )
     ]
+
+    print(timeSlotInfo)
 
     # Check for missing data: no duration given
     timeSlotInfo.update({"slot-duration": timeSlotDuration})

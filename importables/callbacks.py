@@ -10,13 +10,13 @@ from importables.functions import *
 # When uploading an importable save it as json in records format
 # Also changes interval component for temporary notification through text of upload component
 @callback(
-    Output({"section": "intermediate", "type": "dataframe", "index": MATCH},  "data"),
+    Output({"section": "intermediate", "type": "dataframe", "index": MATCH}, "data"),
     Output({"section": "importables",  "type": "interval",  "index": MATCH}, "disabled",
            allow_duplicate = True),
     Output({"section": "importables",  "type": "upload",    "index": MATCH}, "children",
            allow_duplicate = True),
-    Input({ "section": "importables",  "type": "upload",    "index": MATCH},  "contents"),
-    State({ "section": "intermediate", "type": "dataframe", "index": MATCH},  "data"),
+    Input({ "section": "importables",  "type": "upload",    "index": MATCH}, "contents"),
+    State({ "section": "intermediate", "type": "dataframe", "index": MATCH}, "data"),
     prevent_initial_call = True
 ) 
 def storeImportables(contents, prevData):
@@ -43,10 +43,9 @@ def notifyImportFile(n_intervals):
 
 # Store inputted info about distribution
 @callback(
-    Output({"section": "intermediate", "type": "distribution", "index": "formula-info"}, "data",
+    Output({"section": "intermediate", "type": "parameters", "index": "sample-info"}, "data",
            allow_duplicate = True),
-    Output({"section": "intermediate", "type": "parameters",   "index": "sample-info"},  "data"),
-    Output({"section": "intermediate", "type": "parameters",   "index": "test-info"},    "data"),
+    Output({"section": "intermediate", "type": "parameters", "index": "test-info"},    "data"),
     
     Input({"section": "importables", "type": "button", "index": "server-dist"}, "n_clicks"),
     
@@ -61,81 +60,70 @@ def notifyImportFile(n_intervals):
     State({"section": "importables", "type": "input", "index": "server-dist", "info": "upper-bounds-expansion"}, "value"),
     prevent_initial_call = True
 )
-def storeServiceDistInfo(n_clicks, latexExpression, lower, upper, amountSamples, sigma, burnIn, lowerExpansion, upperExpansion):
-    # Store distribution info
-    formulaInfo = {
-        "formula": latexExpression, 
-        "lower": lower, 
-        "upper": upper, 
-        "initial": ""
-    }
-
-    # Store sampling info
-    samplesInfo = {
-        "sigma": sigma, 
-        "lower-bounds-expansion": lowerExpansion,
-        "upper-bounds-expansion": upperExpansion
+def storeServiceDistInfo(n_clicks, latex, lower, upper, amountSamples, sigma, burnIn, lowerExpansion, upperExpansion):
+    # Store info for sampling
+    sampleInfo = {
+        "latex":          latex,
+        "lower":          lower,
+        "upper":          upper,
+        "sigma":          sigma,
+        "lowerExpansion": lowerExpansion,
+        "upperExpansion": upperExpansion,
+        "initial":        ""
     }
 
     # Store info for testing sampling info
     testInfo = {
-        "amount-test-samples": amountSamples, 
-        "burn-in": burnIn, 
+        "amountSamples": amountSamples,
+        "burnIn":        burnIn,
     }
     
-    return formulaInfo, samplesInfo, testInfo
+    return sampleInfo, testInfo
 
 
 # Update LaTeX version of inputted distribution live
 @callback(
-    Output({"section": "importables", "type": "text",  "index": "server-dist"},                         "children"),
+    Output({"section": "importables", "type": "text",  "index": "server-dist"},                    "children"),
     Input({ "section": "importables", "type": "input", "index": "server-dist", "info": "formula"}, "value"),
-    State({ "section": "importables", "type": "text",  "index": "server-dist"},                         "children")
+    State({ "section": "importables", "type": "text",  "index": "server-dist"},                    "children")
 )
-def showLaTeX(latexExpression, prevExpression):
+def showLaTeX(latex, prevLatex):
     # Check if no expression
-    if latexExpression == '':
+    if latex == '':
         return ''
     
     # Make complete LaTeX math expression
-    latexMath = "$$f_S(x) = " + latexExpression + "$$"
+    latexMath = "$$f_S(x) = " + latex + "$$"
 
     # Check if correct LaTeX
-    correctLatex = latexToNumpy(latexExpression)
+    correctLatex = latexToNumpy(latex)
     if correctLatex is not None:
         return latexMath
     else:
-        if isinstance(prevExpression, list):
+        if isinstance(prevLatex, list):
             return "(not valid)"
-        elif "(not valid)" in prevExpression:
-            return prevExpression 
+        elif "(not valid)" in prevLatex:
+            return prevLatex
         else:
-            return prevExpression + " (not valid)"
+            return prevLatex + " (not valid)"
 
 
 # Update plot of sampled service times if distribution changed
 @callback(
-    Output({"section": "importables",  "type": "graph",        "index": "sim-service"},  "figure"),
-    Output({"section": "importables",  "type": "graph",        "index": "sim-service"},  "style"),
-    Output({"section": "intermediate", "type": "distribution", "index": "formula-info"}, "data"),
+    Output({"section": "importables",  "type": "graph",      "index": "sim-service"}, "figure"),
+    Output({"section": "importables",  "type": "graph",      "index": "sim-service"}, "style"),
+    Output({"section": "intermediate", "type": "parameters", "index": "sample-info"}, "data"),
 
-    Input({"section": "intermediate", "type": "distribution", "index": "formula-info"}, "data"),
-    Input({"section": "intermediate", "type": "parameters",   "index": "sample-info"},  "data"),
-    Input({"section": "intermediate", "type": "parameters",   "index": "test-info"},    "data"),
+    Input({ "section": "intermediate", "type": "parameters", "index": "sample-info"}, "data"),
+    Input({ "section": "intermediate", "type": "parameters", "index": "test-info"},   "data"),
     
     State({"section": "importables", "type": "graph", "index": "sim-service"}, "style"),
     background = True,
     prevent_initial_call = True
 )
-def plotServiceTimes(formulaInfo, sampleData, testInfo, style):
-    # Extract info
-    latexExpression, lower, upper, initial = formulaInfo.values()
-    sigma, lowerExpansion, upperExpansion = sampleData.values()
-    amountSamples, burnIn = testInfo.values()
-
+def plotServiceTimes(sampleInfo, testInfo, style):
     # Sample service times for testing
-    testSample, initial = metropolisHastings(latexExpression, amountSamples, sigma, burnIn,
-                                             lower, upper, lowerExpansion, upperExpansion)
+    testSample, initial = metropolisHastings(**sampleInfo, **testInfo)
 
     # Use Patch so we don't need to create a complete figure but just update the data
     patchedFigure = Patch()
@@ -143,10 +131,10 @@ def plotServiceTimes(formulaInfo, sampleData, testInfo, style):
     # Make plot of test sample
     if testSample is not None:
         # Evenly spread points for plotting inputted function
-        minX = lower if lower is not None else testSample.min()
-        maxX = upper if upper is not None else testSample.max()
+        minX = sampleInfo["lower"] if sampleInfo["lower"] is not None else testSample.min()
+        maxX = sampleInfo["upper"] if sampleInfo["upper"] is not None else testSample.max()
         xPoints = np.linspace(minX, maxX, 100)
-        yPoints = latexToNumpy(latexExpression, lower, upper, lowerExpansion, upperExpansion)(xPoints)
+        yPoints = latexToNumpy(**sampleInfo)(xPoints)
 
         # Set data for figure
         patchedFigure["data"][0]["xbins"] = {"start": minX, "end": maxX}
@@ -161,7 +149,7 @@ def plotServiceTimes(formulaInfo, sampleData, testInfo, style):
         style["display"] = "block"
 
         # Add initial value for simulation, preventing another burn in
-        formulaInfo["initial"] = initial
+        sampleInfo["initial"] = initial
         
     else:
         # Free memory from figure
@@ -172,4 +160,4 @@ def plotServiceTimes(formulaInfo, sampleData, testInfo, style):
         # Hide figure
         style["display"] = "none"
 
-    return patchedFigure, style, formulaInfo
+    return patchedFigure, style, sampleInfo
