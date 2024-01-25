@@ -40,17 +40,23 @@ def update_dashboard(n_clicks, passengers_data_json, security_data_json,flights_
     non_zero_values = simulation_result_df[simulation_result_df['Average Waiting Time'] != 0]
     non_zero_count = non_zero_values['Average Waiting Time'].count()
     average_waiting_time = non_zero_values['Average Waiting Time'].sum() / non_zero_count
-    average_waiting_time_str = f"Average Waiting Time: {average_waiting_time:.2f} seconds"
+    average_waiting_time_minutes = average_waiting_time // 60
+    average_waiting_time_seconds = average_waiting_time % 60
+    average_waiting_time_str = f"Average Waiting Time: {int(average_waiting_time_minutes)} minutes and {average_waiting_time_seconds:.2f} seconds"
     
     non_zero_values_Virtual = simulation_result_df[simulation_result_df['Average Virtual Queue Waiting Time'] != 0]
     non_zero_count_Virtual = non_zero_values['Average Virtual Queue Waiting Time'].count()
     average_Virtual_waiting_time= simulation_result_df['Average Virtual Queue Waiting Time'].sum()/non_zero_count
-    average_Virtual_waiting_time_str = f"Average Virtual Waiting Time: {average_Virtual_waiting_time:.2f} seconds"
+    average_Virtual_waiting_time_minutes = average_Virtual_waiting_time // 60
+    average_Virtual_waiting_time_seconds = average_Virtual_waiting_time % 60
+    average_Virtual_waiting_time_str = f"Average Virtual Waiting Time: {int(average_Virtual_waiting_time_minutes)} minutes and {average_Virtual_waiting_time_seconds:.2f} seconds"
     
     non_zero_values_Normal = simulation_result_df[simulation_result_df['Average Normal Queue Waiting Time'] != 0]
     non_zero_count_Normal = non_zero_values['Average Normal Queue Waiting Time'].count()
     average_Normal_waiting_time=simulation_result_df['Average Normal Queue Waiting Time'].sum()/non_zero_count
-    average_Normal_waiting_time_str =  f"Average Normal Waiting Time: {average_Normal_waiting_time:.2f} seconds"
+    average_Normal_waiting_time_minutes = average_Normal_waiting_time // 60
+    average_Normal_waiting_time_seconds = average_Normal_waiting_time % 60
+    average_Normal_waiting_time_str = f"Average Normal Waiting Time: {int(average_Normal_waiting_time_minutes)} minutes and {average_Normal_waiting_time_seconds:.2f} seconds"
     
     plot_fig = create_time_interval_plot(simulation_result_df)
 
@@ -98,7 +104,9 @@ def update_dashboard_without(n_clicks, passengers_data_json, security_data_json)
     non_zero_values_without = simulation_result_without_df[simulation_result_without_df['Average Waiting Time'] != 0]
     non_zero_count_without = non_zero_values_without['Average Waiting Time'].count()
     average_waiting_time_without = non_zero_values_without['Average Waiting Time'].sum() / non_zero_count_without
-    average_waiting_time_without_str = f"Average Waiting Time: {average_waiting_time_without:.2f} seconds"
+    average_waiting_time_without_minutes = average_waiting_time_without // 60
+    average_waiting_time_without_seconds = average_waiting_time_without % 60
+    average_waiting_time_without_str = f"Average Normal Waiting Time: {int(average_waiting_time_without_minutes)} minutes and {average_waiting_time_without_seconds:.2f} seconds"
     plot_fig_without = create_time_interval_without_plot(simulation_result_without_df)
 
     return average_waiting_time_without_str,plot_fig_without
