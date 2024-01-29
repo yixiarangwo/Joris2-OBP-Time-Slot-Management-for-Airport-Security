@@ -1,105 +1,42 @@
 ﻿import plotly.graph_objs as go
 import numpy as np
+from analysis.simulation import *
 
-def create_plotly_histogram(arrival_df):
-    # Convert ArrivalTime from seconds to hours
-    arrival_times_in_hours = arrival_df['ArrivalTime'] / 3600
 
-    # Create histograms
-    hist_data = go.Histogram(
-        x=arrival_times_in_hours,
-        nbinsx=24, 
-        name='Histogram',
-        marker=dict(
-            color='blue',
-            line=dict(
-                color='black',
-                width=2
-            )
-        ),
-        opacity=0.75
-    )
 
-    # Create chart objects
-    fig = go.Figure(data=[hist_data])
+def input_data(passengers_data_json,security_data_json,flights_data_json):
+    passengers_data = pd.DataFrame(passengers_data_json)
+    security_data = pd.DataFrame(security_data_json)
+    flights_data =pd.DataFrame(flights_data_json)
+    passengers_data = pd.merge(passengers_data, flights_data, left_on='FlightNumber', right_on='FlightNumber', how='left')
+    passengers_data = process_virtual_queue(passengers_data, virtual_queue).sort_values(by='new_ArrivalTime')
+    return passengers_data,security_data
 
-    # Update the chart layout
-    fig.update_layout(
-        title_text='Distribution of Passenger Arrival Times',  
-        xaxis_title_text='Time of Day (Hours)',  
-        yaxis_title_text='Number of Passengers',  
-        bargap=0.2, 
-        xaxis=dict(
-            tickmode='linear',
-            tick0=0,
-            dtick=1,  
-        ),
-        plot_bgcolor='white'  
-    )
-    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgrey')
-    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgrey')
+def calculate_average_waiting_time_str(simulation_result_df, column_name):
+    non_zero_values = simulation_result_df[simulation_result_df[column_name] != 0]
+    non_zero_count = non_zero_values[column_name].count()
+    if non_zero_count == 0:
+        return f"Average {column_name}: No data available"
 
-    return fig
+    average_waiting_time = non_zero_values[column_name].sum() / non_zero_count
+    average_waiting_time_minutes = average_waiting_time // 60
+    average_waiting_time_seconds = average_waiting_time % 60
+    return f"Average {column_name}: {int(average_waiting_time_minutes)} minutes and {average_waiting_time_seconds:.2f} seconds"
 
-import plotly.graph_objs as go
+def  convert_to_minutes(simulation_result_df,passengers_data,waiting_time_intervals):    
+    simulation_result_df['Average Waiting Time'] = simulation_result_df['Average Waiting Time']/60
+    simulation_result_df['Average Virtual Queue Waiting Time'] = simulation_result_df['Average Virtual Queue Waiting Time']/60
+    simulation_result_df['Average Normal Queue Waiting Time'] = simulation_result_df['Average Normal Queue Waiting Time']/60
+    passengers_data["waitingTime"]=passengers_data["waitingTime"]/60
+    waiting_time_intervals_minutes = [[time / 60 for time in interval] for interval in waiting_time_intervals]
+    return simulation_result_df,passengers_data,waiting_time_intervals_minutes
 
-def create_time_interval_plot(df):
-    fig = go.Figure()
 
-    
-    fig.add_trace(go.Scatter(
-        x=df['Time in hour'],
-        y=df['Average Waiting Time'],
-        mode='markers+lines',
-        name='Average Waiting Time', 
-        marker=dict(color='blue', size=7)
-    ))
+def get_time_at_index(simulation_result_df, column_name, time_point):
+    return simulation_result_df.loc[time_point, column_name]
 
-    
-    fig.add_trace(go.Scatter(
-        x=df['Time in hour'],
-        y=df['Average Virtual Queue Waiting Time'],
-        mode='markers+lines',
-        name='Average Virtual Queue Waiting Time',
-        marker=dict(color='red', size=7)
-    ))
+def format_time_interval_message(data_type, time_value):
+    if data_type not in ["Average Waiting Time", "Average Virtual Queue Waiting Time", "Average Normal Queue Waiting Time"]:
+        return "Invalid data type selected."
 
-    
-    fig.add_trace(go.Scatter(
-        x=df['Time in hour'],
-        y=df['Average Normal Queue Waiting Time'],
-        mode='markers+lines',
-        name='Average Normal Queue Waiting Time',
-        marker=dict(color='green', size=7)
-    ))
-
-    
-    fig.update_layout(
-        title='Average Waiting Time at Security Check (per 15-minute Interval)',
-        xaxis_title='Time Interval',
-        yaxis_title='Average Waiting Time (second)',
-        xaxis=dict(tickangle=45),
-        margin=dict(l=20, r=20, t=20, b=20),
-        paper_bgcolor="LightSteelBlue",
-        showlegend=True  
-    )
-
-    return fig
-
-def create_time_interval_without_plot(df):
-    fig = go.Figure(data=go.Scatter(
-        x=df['Time in hour'],
-        y=df['Average Waiting Time'],
-        mode='markers+lines',  
-        marker=dict(color='blue', size=7)  
-    ))
-    fig.update_layout(
-        title='Average Waiting Time at Security Check (per 15-minute Interval)',
-        xaxis_title='Time Interval',
-        yaxis_title='Average Waiting Time (second)',
-        xaxis=dict(tickangle=45),
-        margin=dict(l=20, r=20, t=20, b=20),
-        paper_bgcolor="LightSteelBlue",
-        showlegend=False
-    )
-    return fig
+    return f"{data_type} in this interval: {time_value} minutes."
