@@ -140,7 +140,7 @@ def runSimulation(n_clicks, amountRuns, arrivalData, flightData, laneData, timeS
     
     # Create and add slider
     steps = []
-    times = [f"{i//4:02d}:{i*15%60:d}-{(i+1)//4:d}:{(i+1)*15%60:02d}" for i in range(len(figure4.data))]
+    times = [f"{i//4:02d}:{i*15%60:02d}-{(i+1)//4:02d}:{(i+1)*15%60:02d}" for i in range(len(figure4.data))]
     for i in range(len(figure4.data)):
         step = {
             "method": "update",
