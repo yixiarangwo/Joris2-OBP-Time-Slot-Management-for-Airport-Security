@@ -20,12 +20,11 @@ def process_virtual_queue(passengers_data, virtual_queue, duration):
 
     passengers_data["new_ArrivalTime"] = passengers_data["ArrivalTime"]
     passengers_data['Priority'] = 0
-    
+
     # Iterate over the virtual queue list
-    for flight_info in virtual_queue:
-        flight_code = flight_info["flights"]
-        time_slots = flight_info["time_slots"]
-        capacities = flight_info["capacity"]
+    for flight_code in virtual_queue:
+        time_slots = virtual_queue[flight_code]["start"]
+        capacities = virtual_queue[flight_code]["capacity"]
 
         # Get eligible passengers
         eligible_passengers = passengers_data[((passengers_data['ArrivalTime'].between(peak_periods1_start, peak_periods1_end)) | 
@@ -38,12 +37,9 @@ def process_virtual_queue(passengers_data, virtual_queue, duration):
             if not time_slots:
                 break
 
-            time_slot = random.choice(time_slots)
-            capacity = capacities[time_slots.index(time_slot)]
-
-            # Check if time slot capacity is exhausted
-            if capacity == 0:
-                continue
+            choiceIdx = random.choice(range(len(time_slots)))
+            time_slot = time_slots[choiceIdx]
+            capacity = capacities[choiceIdx]
 
             # Generate random arrival times between time_slot and time_slot + duration of time slots
             random_arrival_time = random.uniform(time_slot, time_slot + duration)
@@ -53,11 +49,12 @@ def process_virtual_queue(passengers_data, virtual_queue, duration):
             passengers_data.loc[i, 'Priority'] = 1  
 
             
-            capacities[time_slots.index(time_slot)] -= 1
+            capacities[choiceIdx] -= 1
 
             # If a time slot runs out of capacity,  remove that time slot here
-            if capacities[time_slots.index(time_slot)] == 0:
-                time_slots.remove(time_slot)
+            if capacities[choiceIdx] == 0:
+                del time_slots[choiceIdx]
+                del capacities[choiceIdx]
                 
     passengers_data["new_ArrivalTime_formatted"] = passengers_data["new_ArrivalTime"].apply(lambda x: (datetime(1970, 1, 1) + timedelta(seconds=x)).strftime('%H:%M'))
     passengers_data["DepartureTime_formatted"] = passengers_data["DepartureTime"].apply(lambda x: (datetime(1970, 1, 1) + timedelta(seconds=x)).strftime('%H:%M'))
@@ -239,14 +236,12 @@ def multiple_run_simulation(runs, sim_time, passengers_data, flights_data, secur
     duration /= 60
     lane_capacity /= 15
 
-    # Set time slots format
-    virtual_queue = pd.DataFrame.from_dict(time_slots, orient = 'columns').rename({"FlightNumber": "flights", "start": "time_slots"})
-
+    # Run simulations
     total_avg_waiting_times = None
     for i in range(runs):
         metropolisGen = metropolisHastings(amountSamples = amountSamples, **distInfo)
         # Set new arrival times
-        passengers_data = process_virtual_queue(passengers_data, virtual_queue, duration * 60).sort_values(by='new_ArrivalTime')
+        passengers_data = process_virtual_queue(passengers_data, time_slots.copy(), duration * 60).sort_values(by='new_ArrivalTime')
 
         average_waiting_time_df,waiting_time_intervals,new_passengers_data = run_simulation(sim_time, passengers_data, security_data, metropolisGen)
         if total_avg_waiting_times is None:

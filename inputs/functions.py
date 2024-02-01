@@ -159,7 +159,7 @@ def time24ToUnix(strTime, fill = None):
 #    2. Always picking lowerst (above 0) bar from histogram,
 #    3. Always picking the bar closest to the average bar count.
 @njit(cache = True)
-def timeSlotCases(arrivalTimes, capacities, unixSlots, histBinStarts, binSlotIndices):
+def timeSlotCases(arrivalTimes, capacities, unixSlots, histBinStarts, binSlotIndices):#flights, capacities, unixSlots, histBinStarts, binSlotIndices):#arrivalFlights, capacities, unixSlots, histBinStarts, binSlotIndices):#flights, capacities, unixSlots, histBinStarts, binSlotIndices):
     # Make histogram of arrivals manually
     binArrivalIndices = [
         max([
@@ -181,7 +181,7 @@ def timeSlotCases(arrivalTimes, capacities, unixSlots, histBinStarts, binSlotInd
     """
     binFLights = [
         [
-            arrivalTimes[i]
+            arrivalFlights, Times[i]
             for i, index in enumerate(binArrivalIndices)
             if index > -1 and index == binIdx
         ]
@@ -203,14 +203,18 @@ def timeSlotCases(arrivalTimes, capacities, unixSlots, histBinStarts, binSlotInd
                 # Get counts per bin (not including bins without counts)
                 topBinCounts =  [len(binCount) for idx, binCount in enumerate(topBinArrivals)]
                                   
-                bottomBinCounts = [len(binCount) for idx, binCount in enumerate(bottomBinArrivals) 
-                                  if len(binCount) > 0]
+                bottomBinCounts = [len(binCount) for idx, binCount in enumerate(bottomBinArrivals)]
                                   
-                avgBinCounts =   [len(binCount) for idx, binCount in enumerate(avgBinArrivals)
-                                  if len(binCount) > 0]
+                avgBinCounts =   [len(binCount) for idx, binCount in enumerate(avgBinArrivals)]
+
+                # Get boolean lists with whether there is a passenger belonging to time slot flight of bin
+                # and list whether there are any passengers in that list
+                #flightInBin = []
+                #notZero = 
                 
-                # Find bin with most counts
+                # Find bin with most counts if there is a passenger in that bin
                 maxTopCount = max(topBinCounts)
+                #max(index for i, index in enumerate(topBinCounts) if flightInBin[i] and notZero[i])
                 mostIdx = [idx for idx, binCount in enumerate(topBinCounts) if maxTopCount == binCount][0]
                 
                 # Find bin with least counts

@@ -176,6 +176,11 @@ def changeBins(capacities, slotStartTimes, arrivalData, flightData, figure):
     if arrivalData == {}:
         return no_update, no_update
 
+    # Parse context divs
+    #print(ctx.args_grouping[0])
+    #triggered = [{"flight": trigger["id"]["flight"], "count": trigger["id"]["count"], "n_clicks": trigger["value"]}
+    #             for trigger in ctx.args_grouping[0] if trigger["triggered"]][0]
+    
     # Check if any time slots are inputted yet
     capacities = [capacity if isinstance(capacity, int) else -1 for capacity in capacities]
     totalCapacity = sum(capacities)
@@ -241,8 +246,9 @@ def changeBins(capacities, slotStartTimes, arrivalData, flightData, figure):
 
     
     # Adjust second histogram for seeing how arrivals "change" with given time slots
-    bestArrivalData, worstArrivalData, avgArrivalData = timeSlotCases(arrivalData["ArrivalTime"], capacities, 
-                                                                      unixSlots, histBinStarts, binSlotIndices)
+    #flight = [flight if isinstance(capacity, int) else -1 for capacity in capacities]
+    bestArrivalData, worstArrivalData, avgArrivalData = timeSlotCases(arrivalData["ArrivalTime"],# arrivalData["FlightNumber"],
+                                                                      capacities, unixSlots, histBinStarts, binSlotIndices)
     
     # Give data to histograms
     patchedCaseFig = Patch()
@@ -453,7 +459,7 @@ def removeTimeSlotsInput(n_clicks, divs, flight, flightData):
 
     # Get info on trigger
     triggered = [{"flight": trigger["id"]["flight"], "count": trigger["id"]["count"], "n_clicks": trigger["value"]}
-                for trigger in ctx.args_grouping[0] if trigger["triggered"]][0]
+                 for trigger in ctx.args_grouping[0] if trigger["triggered"]][0]
 
     # If there is only one flight and a button was created, return
     if triggered["n_clicks"] == 0:
@@ -812,6 +818,16 @@ def showRecomSlots(n_clicks, arrivalData, flightData, laneData, slotsDuration, p
         
         # Get recommendations from function
         recomDict = recommendedTimeSlots(arrivalData, laneData, flightData, slotsDuration, laneCap)
+
+        # Remove recommendations with zero capacities
+        recomDict = {
+            flight: {
+                "start":    [start for i, start in enumerate(recomDict[flight]["start"]) 
+                             if recomDict[flight]["capacity"][i] > 0],
+                "capacity": [cap   for cap in recomDict[flight]["capacity"] if cap > 0]
+            }
+            for flight in recomDict
+        }
 
         # Make divs from determined recommended time slots
         recomDivs = [

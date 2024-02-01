@@ -79,11 +79,7 @@ app.layout = dbc.Container(
                 ),
             ],
             id = {"section": "app", "type": "tabs"},
-            active_tab = "tab-analysis"                               # remove, just convenient right now
         ),
-        
-        # For testing callbacks
-        html.Div(id = "test", style = {"display": "none"})
     ] + storedImportables + storedInputs,
     fluid = True,   
 )

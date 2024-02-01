@@ -27,7 +27,7 @@ serviceTestFig.add_trace(
     secondary_y = True
 )
 serviceTestFig.update_layout(
-    xaxis = {"title": "Service time in seconds", "showgrid": False},
+    xaxis = {"title": "Security check time in seconds", "showgrid": False},
     yaxis = {"title": "Probability (unscaled)", "showticklabels": False, "showgrid": False},
     yaxis2 = {"showticklabels": False, "rangemode": "tozero", "showgrid": False},
     margin = {"l": 0, "r": 0, "t": 0, "b": 0},

@@ -135,7 +135,7 @@ sampleInput = [
 
 serviceInput = [
     html.H4(
-        "Service time distribution",
+        "Security check time distribution",
         className = "card-title",
     ),
 

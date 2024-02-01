@@ -262,9 +262,9 @@ analysis = [
                                             style = {
                                                 "margin": 0, 
                                                 "padding": 0, 
-                                                "marginLeft": "-0.5rem",
-                                                "font-size": "40px",
-                                                "text-align": "end",
+                                                "marginLeft": "-0.5rem", 
+                                                "font-size": "40px", 
+                                                "text-align": "center",
                                                 "color": "white"
                                             }
                                         ),
@@ -292,7 +292,7 @@ analysis = [
                                         html.Label(
                                             "sec",
                                             style = {
-                                                "margin": 0,
+                                                "margin": 0, 
                                                 "padding": 0,
                                                 "marginTop": "1.5rem",
                                                 "font-size": "15px", 

@@ -1,4 +1,3 @@
-from msilib.schema import PatchPackage
 from dash import callback, Input, Output, State, no_update, Patch
 import numpy as np
 import json
@@ -101,17 +100,12 @@ import pandas as pd
     prevent_initial_call = True
 )
 def runSimulation(n_clicks, amountRuns, arrivalData, flightData, laneData, timeSlotsInfo, laneCap, distInfo):
-    # Run simulation with given maximal time and amount of runs
-    
+    # Convert format
     slotDuration = timeSlotsInfo["slot-duration"]
-    timeSlots = [slot for slot in timeSlotsInfo if slot != "slot-duration"]
-    print("test2",timeSlots)
+    timeSlots = {flight: timeSlotsInfo[flight] for flight in timeSlotsInfo if flight != "slot-duration"}
+    
+    # Run simulation with given maximal time and amount of runs
     totalAvgs, allWaitingTimes, missedFlight, waitingPerInverval, avgTotal, avgVQ, avgGQ = multiple_run_simulation(amountRuns, 40000, arrivalData, flightData, laneData, timeSlots, slotDuration, laneCap, distInfo)
-
-    #print("allSimWaitingTimes", allWaitingTimes)
-    print("missedFlight", [(time1, time2) for time1, time2 in zip(missedFlight["ArrivalTime"], missedFlight["new_ArrivalTime"])])
-    print(missedFlight)
-    #print("waiting_time_intervals_minutes", waiting_time_intervals_minutes)
 
     figure1 = avgWaitingOverTime(
         totalAvgs["Time in hour"],

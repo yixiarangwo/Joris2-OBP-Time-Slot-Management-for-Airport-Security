@@ -1,6 +1,4 @@
-﻿# Metropolis Hastings algorithm for sampling from random function
-# Otherwise, rejection sampling is another possibility
-import simpy
+﻿import simpy
 import numpy as np
 import random
 from datetime import datetime, timedelta
@@ -15,6 +13,8 @@ time_interval_without = 15 * 60
 waiting_time_intervals_without = []
 average_waiting_times_without = []
 time_intervals_start_without = []
+
+from analysis.functions import *
 
 def generate_processing_time_without():
     return random.expovariate(1 / 20.0)
