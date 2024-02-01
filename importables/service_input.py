@@ -1,214 +1,234 @@
 from dash import dcc, html
+import dash_bootstrap_components as dbc
+
+import dash_mantine_components as dmc
+from dash_iconify import DashIconify
+
 from importables.graphs import *
+from designs import *
+
+def inputWithTitle(name, id, width = True, value = "", textStyle = {}, colStyle = {}, **kwargs):
+    return dbc.Col([
+        dbc.Row([
+            html.Label(
+                name,
+                style = {"text-align": "center"} | textStyle
+            ),
+            dbc.Input(
+                **kwargs,
+                id = id,
+                style = {"width": "6rem"},
+                type = "number",
+                value = value,
+            ),
+        ], justify = "center"),
+    ], width = width, align = "center", style = colStyle)
+
+
+distributionInput = [
+    dbc.Col([
+        dbc.Row([
+            html.Label(
+                "Give (unscaled) distribution w.r.t. x",
+                style = {"text-align": "center"}
+            ),
+            html.Div([
+                dbc.Select(
+                    options = [
+                        {"label": "Exponential",     "value": r"\exp{-\left| x \right|}"},
+                        {"label": "Uniform",         "value": r"1"},
+                        {"label": "Normal",          "value": r"\exp{- \frac{1}{2} (\frac{x-\mu}{\sigma})^2}"},
+                        {"label": "Standard Normal", "value": r"\exp{- \frac{x^2}{2}}"},
+                    ],
+                    id = {"section": "importables", "type": "dropdown", "index": "formula-selection"},
+                    placeholder = "Distributions",
+                    style = {
+                        "width": "24.5rem",
+                        "border":"1px black solid",
+                        "marginRight": "0.35rem",
+                        "height": "2.5rem",
+                    },
+                    value = "",
+                ),
+                dbc.Textarea(
+                    id = {"section": "importables", "type": "input", "index": "server-dist", "info": "formula"},
+                    placeholder = "Enter service distribution in LaTeX format here",
+                    style = {
+                        "width": "21.5rem", 
+                        "height": "2.5rem",
+                        "border":"1px black solid",
+                        "marginTop": "-2.5rem",
+                        "position": "absolute",
+                        "zIndex": "1"
+                    },
+                    value = r"\exp(-\frac{\left| x \right|}{20})",
+                    invalid = False,
+                    valid = False
+                ),
+            ])
+        ], justify = "center", align = "center", style = {"margin": 0, "padding": 0}),
+    ], width = True),
+    
+    inputWithTitle(
+        "Lower bound", 
+        {"section": "importables", "type": "input", "index": "server-dist", "info": "lower-bound"},
+        value = 0,
+        colStyle = {"margin": 0, "padding": 0}
+    ),
+    
+    inputWithTitle(
+        "Upper bound",
+        {"section": "importables", "type": "input", "index": "server-dist", "info": "upper-bound"},
+        colStyle = {"marginLeft": 0, "padding": 0}
+    ),
+]
+
+
+sampleInput = [
+    # Input amount test samples
+    inputWithTitle(
+        "Test sample size",
+        {"section": "importables", "type": "input", "index": "server-dist", "info": "amount-test-samples"},
+        value = 3000,
+        colStyle = {"margin": 0, "padding": 0},
+        min = 1
+    ),
+    
+    # Input sigma
+    inputWithTitle(
+        "Step size (sigma)",
+        {"section": "importables", "type": "input", "index": "server-dist", "info": "sigma"},
+        value = 10,
+        colStyle = {"margin": 0, "padding": 0},
+        min = 0.00001
+    ),
+    
+    # Input burn in steps
+    inputWithTitle(
+        "Burn in steps",
+        {"section": "importables", "type": "input", "index": "server-dist", "info": "burn-in"},
+        value = 1000,
+        colStyle = {"margin": 0, "padding": 0},
+        min = 0
+    ),
+    
+    # Input lower bound expansion
+    inputWithTitle(
+        "Lower expansion",
+        {"section": "importables", "type": "input", "index": "server-dist", "info": "lower-bounds-expansion"},
+        value = 20,
+        colStyle = {"margin": 0, "padding": 0},
+        min = 0
+    ),
+    
+    # Input upper bound expansion
+    inputWithTitle(
+        "Upper expansion",
+        {"section": "importables", "type": "input", "index": "server-dist", "info": "upper-bounds-expansion"},
+        value = 2,
+        textStyle = {"width": "150%"},
+        colStyle = {"margin": 0, "padding": 0},
+        min = 0
+    )
+]
+
 
 serviceInput = [
-    ### Service time distribution
-    html.Div(
-        children = [
-            # Title
-            html.H3("Service time distribution"),
+    html.H4(
+        "Service time distribution",
+        className = "card-title",
+    ),
 
-            html.Div(
-                children = [
-                    # Latex input
-                    html.Div(
-                        children = [
-                            html.Label("Give (proportional) distribution in terms of x"),
-                            dcc.Textarea(
-                                id = {"section": "importables", "type": "input", "index": "server-dist", "info": "formula"},
-                                placeholder = "Enter service distribution in LaTeX format here",
-                                style = {"display": "block", "width": "22.5vw", "height": "2.5vw"},
-                                value = r"\exp(-x)"
-                            ),
-                        ],
-                        style = {
-                            "display": "inline-block",
-                            "float": "left",
-                            "marginRight": "1vw"
-                        }
-                    ),
-                    
-                    # Lower bound distribution input
-                    html.Div(
-                        children = [
-                            html.Label("Lower bound"),
-                            dcc.Input(
-                                id = {"section": "importables", "type": "input", "index": "server-dist", "info": "lower-bound"},
-                                style = {"display": "block", "width": "6vw"},
-                                type = "number",
-                                value = 0
-                            ),
-                        ],
-                        style = {
-                            "display": "inline-block",
-                            "float": "left",
-                            "marginRight": "1vw"
-                        }
-                    ),
-            
-                    # Upper bound distribution input
-                    html.Div(
-                        children = [
-                            html.Label("Upper bound"),
-                            dcc.Input(
-                                id = {"section": "importables", "type": "input", "index": "server-dist", "info": "upper-bound"},
-                                style = {"display": "block", "width": "6vw"},
-                                type = "number"
-                            ),
-                        ],
-                        style = {
-                            "display": "inline-block",
-                            "float": "left",
-                        }
-                    ),
-                ],
-                style = {"display": "block"}
-            ),
-            
+    dbc.Row([
+        dbc.Card(
+            children = [
+                # Distribution service times info
+                dbc.Row(
+                    children = distributionInput,
+                    style = {
+                        "paddingLeft": "1rem", 
+                        "paddingRight": "1rem", 
+                        "paddingTop": "0.5rem",
+                        "paddingBottom": "0.5rem"
+                    }
+                ),
 
-            html.Div(
-                children = [
-                    ## Other info for sample test
-                    # Input amount test samples
-                    html.Div(
-                        children = [
-                            html.Label("Test sample size"),
-                            dcc.Input(
-                                id = {"section": "importables", "type": "input", "index": "server-dist", "info": "amount-test-samples"},
-                                style = {"display": "block", "alignItems": "center", "width": "6vw"},
-                                type = "number",
-                                value = 3000
-                            ),
-                        ],
-                        style = {
-                            "display": "inline-block",
-                            "textAlign": "center", 
-                            "alignItems": "center",
-                            "float": "left",
-                            "marginRight": "1vw"
-                        }
-                    ),
-            
-                    # Input sigma
-                    html.Div(
-                        children = [
-                            html.Label("Step size (sigma)"),
-                            
-                            dcc.Input(
-                                id = {"section": "importables", "type": "input", "index": "server-dist", "info": "sigma"},
-                                style = {"display": "block", "width": "6vw"},
-                                type = "number",
-                                value = 1
-                            ),
-                        ],
-                        style = {
-                            "display": "inline-block",
-                            "textAlign": "center", 
-                            "alignItems": "center",
-                            "marginRight": "1vw"
-                        }
-                    ),
-            
-                    # Input burn in steps
-                    html.Div(
-                        children = [
-                            html.Label("Burn in steps"),
-                            dcc.Input(
-                                id = {"section": "importables", "type": "input", "index": "server-dist", "info": "burn-in"},
-                                style = {"display": "block", "width": "6vw"},
-                                type = "number",
-                                value = 1000
-                            ),
-                        ],
-                        style = {
-                            "display": "inline-block",
-                            "textAlign": "center", 
-                            "alignItems": "center",
-                            "marginRight": "1vw"
-                        }
-                    ),
-            
-                    # Input lower bound expansion
-                    html.Div(
-                        children = [
-                            html.Label("Lower expansion"),
-                            dcc.Input(
-                                id = {"section": "importables", "type": "input", "index": "server-dist", "info": "lower-bounds-expansion"},
-                                style = {"display": "block", "width": "6vw"},
-                                type = "number",
-                                value = 3
-                            ),
-                        ],
-                        style = {
-                            "display": "inline-block",
-                            "textAlign": "center", 
-                            "alignItems": "center",
-                            "marginRight": "1vw"
-                        }
-                    ),
-            
-                    # Input upper bound expansion
-                    html.Div(
-                        children = [
-                            html.Label("Upper expansion"),
-                            dcc.Input(
-                                id = {"section": "importables", "type": "input", "index": "server-dist", "info": "upper-bounds-expansion"},
-                                style = {
-                                    "display": "block", 
-                                    "width": "6vw", 
-                                    "verticalAlign": "middle", 
-                                    "horizontalAlign": "middle"
-                                },
-                                type = "number",
-                                value = 3
-                            ),
-                        ],
-                        style = {
-                            "display": "inline-block",
-                            "textAlign": "center",
-                            "alignItems": "center",
-                        }
-                    ),
-                ],
-                style = {
-                    "display": "inline-block",
-                    "textAlign": "center",
-                    "alignItems": "center",
-                    "marginTop": "1vw"
-                }
-            ),
-            
-            
-            ## Output of importables tab
-            # Show function from LaTeX
+                # Other info for sample test
+                dbc.Row(
+                    children = sampleInput,
+                    style = {
+                        "paddingLeft": "1rem", 
+                        "paddingRight": "1rem", 
+                        "paddingBottom": "1rem"
+                    }
+                )
+            ],
+            style = {"width": "97%"},
+            color = "secondary",
+            class_name = "justify-content-center"
+        ),
+    ], justify = "center"),
+    
+    ## Output of importables tab
+    # Show function from LaTeX
+    dbc.Row([
+        dbc.Col([
             dcc.Markdown(
                 id = {"section": "importables", "type": "text", "index": "server-dist"},
-                children = [], 
-                mathjax = True, 
-                style = {"font-size": "125%"}
-            ),
-            
-            # Submit button
-            html.Button(
+                style = {
+                    "font-size": "125%", 
+                    "text-align": "center",
+                    "paddingTop": "1rem",
+                },
+                children = [],
+                className ="h-50",
+                mathjax = True,
+            ),  
+        ], width = 8, align = "center"),
+
+        # Submit distribution button
+        dbc.Col([
+            submitButton(
                 "Submit distribution",
-                id = {"section": "importables", "type": "button", "index": "server-dist"}, 
+                "ion:speedometer-outline",
+                {"section": "importables", "type": "button", "index": "server-dist"},
+                {"margin-top": "1rem", "margin-bottom": "1rem"}
             ),
+        ], width = 4, align = "center"),
+    ], justify = "center", align = "center", style = {"margin-top": "0.25rem", "margin-bottom": "0.25rem", "max-width": "97%"}),
     
-            # Show graph of sampled service times
-            dcc.Graph(
-                figure = serviceTestFig,
-                id = {"section": "importables", "type": "graph", "index": "sim-service"},
-                style = {"display": "none", "width": "40vw", "height": "40vh", "marginTop": "3%"},
-                config = {"displayModeBar": False}
-            )
-            
-        ], 
-        style = {
-            "float": "left", 
-            "margin": "auto", 
-            "marginLeft": "0%", 
-            "marginRight": "0%",
-            "width": "50vw",
-        }
-    )
+    dbc.Row([
+        dbc.Spinner([
+            dbc.Row([
+                # Error message input service info
+                dbc.Alert(
+                    children = [],
+                    id = {"section": "importables", "type": "alert", "index": "serivce-input"},
+                    style = {
+                        "display": "none",
+                        "flex-direction": "column",
+                        "width": "31rem",
+                        "margin": 0,
+                        "padding": "0.25rem",
+                        "border":"2px black solid",
+                    },
+                    color = "danger",
+                    className = "justify-content-center"
+                ),
+                # Show graph of sampled service times
+                dcc.Graph(
+                    figure = serviceTestFig,
+                    id = {"section": "importables", "type": "graph", "index": "sim-service"},
+                    style = {
+                        "display": "none",
+                        "width": "31rem", 
+                        "height": "12.5rem",
+                        "marginRight": 0,
+                        "marginBottom": 0
+                    },
+                    config = {"displayModeBar": False}
+                ),
+            ], justify = "center", align = "center")
+        ], type = "grow", color = "primary", size = "5rem"),
+    ], justify = "center", align = "center", style = {"height": "12.5rem"})
 ]

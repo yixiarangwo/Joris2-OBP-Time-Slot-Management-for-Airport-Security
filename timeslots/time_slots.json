@@ -1,0 +1,11 @@
+{
+    "HP4524": {
+        "capacity": [
+            100
+        ],
+        "start": [
+            43200
+        ]
+    },
+    "slot-duration": null
+}

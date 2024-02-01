@@ -4,6 +4,7 @@ import random
 import numpy as np
 import pandas as pd
 import sympy as sp
+from numba import jit
 from scipy.optimize import fmin
 from latex2sympy2 import latex2sympy
 
@@ -32,6 +33,103 @@ def parseContents(contents, structure = "list"):
     # Convert df to json-like structure
     json = df.to_dict(orient = structure)
     return json, True
+
+
+
+# Check if needed data from arrivals are complete
+def arrivalDataCheck(arrivalData):
+    # Check if needed columns names exist
+    times = arrivalData.get("ArrivalTime", None)
+    flights = arrivalData.get("FlightNumber", None)
+    if times is None or flights is None:
+        return False
+
+    # Check if columns are lists
+    if not (isinstance(times, list) and isinstance(flights, list)):
+        return False
+    
+    # Check if there are an equal amount of elements in both lists
+    if len(times) != len(flights):
+        return False
+
+    # Check if all elements are floats or integers and strings
+    elemCheckTimes = all(isinstance(time, int) or isinstance(time, float) for time in times)
+    elemCheckFlights = all(isinstance(flights, str) for flight in flights)
+    if not (elemCheckTimes or elemCheckFlights):
+        return False
+
+    # Check if for all 0 <= time < 24 * 3600
+    maxTime = 24 * 3600
+    if not all(0 <= time < maxTime for time in times):
+        return False
+
+    # Passed tests
+    return True
+    
+
+
+# Check if needed data from flight schedule are complete
+def flightDataCheck(flightData):
+    # Check if needed columns names exist
+    flights = flightData.get("FlightNumber", None)
+    passengers = flightData.get("Passengers", None)
+    if flights is None or passengers is None:
+        return False
+
+    # Check if columns are lists
+    if not (isinstance(flights, list) and isinstance(passengers, list)):
+        return False
+
+    # Check if there are an equal amount of elements in both lists
+    if len(flights) != len(passengers):
+        return False
+
+    # Check if all elements are strings and integers
+    elemCheckFlights = all(isinstance(flight, str) for flight in flights)
+    elemCheckPassengers = all(isinstance(cap, int)  for cap in passengers)
+    if not (elemCheckFlights and elemCheckPassengers):
+        return False
+
+    # Check if passengers > 0
+    if not all(cap > 0 for cap in passengers):
+        return False
+
+    # Passed tests
+    return True
+    
+
+
+# Check if needed data from security lanes are complete
+def laneDataCheck(laneData):
+    # Check if needed columns names exist
+    times = laneData.get("Time", None)
+    openLanes = laneData.get("Lanes", None)
+    if times is None or openLanes is None:
+        return False
+
+    # Check if columns are lists
+    if not (isinstance(times, list) and isinstance(openLanes, list)):
+        return False
+
+    # Check if there are an equal amount of elements in both lists
+    if len(times) != len(openLanes):
+        return False
+
+    # Check if all elements are (floats or) integers
+    elemCheckTime = all(isinstance(time, int) or isinstance(time, float) for time in times)
+    elemCheckLane = all(isinstance(lane, int) for lane in openLanes)
+    if not (elemCheckTime and elemCheckLane):
+        return False
+
+    # Check if for all 0 <= time < 24 * 3600 and amount of lanes >= 0
+    maxTime = 24 * 3600
+    if not (all(0 <= time < maxTime for time in times) and 
+            all(lane > 0 for lane in openLanes)):
+        return False
+
+    # Passed tests
+    return True
+
 
 
 # Function to parse LaTeX expression to numpy function
@@ -97,42 +195,47 @@ def metropolisHastings(latex, amountSamples, sigma, lower, upper,
 	# Rough estimation for maximum value as initial value algorithm and
 	# make lambda func for checking if candidate within bounds
 	if lower is not None and upper is not None:
-		initial = (lower + upper) / 2
-		checkBounds = lambda x: x >= lower and x <= upper
+	    initial = (lower + upper) / 2
+	    checkBounds = lambda x: x >= lower and x <= upper
 	elif lower is not None:
-		initial = lower
-		checkBounds = lambda x: x >= lower
+	    initial = lower
+	    checkBounds = lambda x: x >= lower
 	elif upper is not None:
-		initial = upper
-		checkBounds = lambda x: x <= upper
+	    initial = upper
+	    checkBounds = lambda x: x <= upper
 	else:
-		initial = 0
-		checkBounds = lambda x: True
+	    initial = 0
+	    checkBounds = lambda x: True
 
 	# More accurate estimation for maximum value using scipy
 	initial = fmin(lambda x: -densityFunc(x), initial, disp = 0)[0]
 
 	# Perform algorithm using initial value
-	iterations = amountSamples + burnIn
-	samples = np.zeros(iterations)
+	totalSamples = amountSamples + burnIn
+	samples = np.zeros(totalSamples)
 	accepted = 0
-	
-	while accepted < iterations:
-		# Get candidate
-		candidate = initial + np.random.normal(scale = sigma)
-		
-		# Calculate criterion from ratio (proportional) probs
-		probInitial = densityFunc(initial)
-		probCandidate = densityFunc(candidate)
-    
-		# Determine if candidate is accepted
-		if np.random.uniform() < probCandidate / probInitial:
-			if checkBounds(initial): 
-			    samples[accepted] = initial
-			    accepted += 1
-			initial = candidate
-	
-	# Remove burn in samples, shuffle and return
-	samples = np.asarray(samples)[burnIn:]
-	np.random.shuffle(samples)
-	return samples, initial
+
+	while accepted < totalSamples:
+	    nRands = np.random.normal(scale = sigma, size = (totalSamples - accepted) * 3)
+	    uRands = np.random.uniform(size = (totalSamples - accepted) * 3)
+
+	    for uRand, nRand in zip(uRands, nRands):
+	        # Get candidate
+	        candidate = initial + nRand
+
+	        # Calculate criterion from ratio (proportional) probs
+	        probInitial = densityFunc(initial)
+	        probCandidate = densityFunc(candidate)
+
+	        # Determine if candidate is accepted
+	        if uRand < (probCandidate / probInitial):
+	            initial = candidate
+	            if checkBounds(candidate):
+	                samples[accepted] = candidate
+	                accepted += 1
+
+	                if accepted >= totalSamples:
+	                    # Remove burn in samples, shuffle and return
+	                    samples = np.asarray(samples)[burnIn:]
+	                    np.random.shuffle(samples)
+	                    return samples, initial

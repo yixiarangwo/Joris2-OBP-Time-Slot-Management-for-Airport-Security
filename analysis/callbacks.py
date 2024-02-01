@@ -1,104 +1,211 @@
-from dash import Dash, dcc, html, Input, Output, State, callback, ctx,dash_table
+from msilib.schema import PatchPackage
+from dash import callback, Input, Output, State, no_update, Patch
 import numpy as np
+import json
 
+from importables.functions import latexToNumpy
+
+from analysis.analysis import *
 from analysis.functions import *
-
 from analysis.simulation import *
-
-from analysis.simulation_without import *
-
+from analysis.graphs import *
 
 
 
-############################################ Analysis tab ############################################
+# Open selection panel with button
 @callback(
-    Output('average-waiting-time-output', 'children'),
-    Output('average-Virtua-waiting-time-output', 'children'),
-    Output('average-Normal-waiting-time-output', 'children'),
-    Output('waiting-time-plot-output', 'figure'),
-    Input('run-simulation-button', 'n_clicks'),
-    State({"section": "intermediate", "type": "dataframe", "index": "arrivals"}, "data"),
-    State({"section": "intermediate", "type": "dataframe", "index": "lanes"}, "data"),
-    State({"section": "intermediate", "type": "dataframe", "index": "flights"}, "data"),
+    Output({"section": "analysis", "type": "panel", "index": "sim-selection"}, "is_open",
+           allow_duplicate = True),
+    Input({ "section": "analysis", "type": "button", "index": "open-panel"},   "n_clicks"),
     prevent_initial_call = True
 )
-def update_dashboard(n_clicks, passengers_data_json, security_data_json,flights_data_json):
-    if n_clicks is None:
-        raise dash.exceptions.PreventUpdate
-
-    
-    passengers_data = pd.DataFrame(passengers_data_json)
-    security_data = pd.DataFrame(security_data_json)
-    flights_data =pd.DataFrame(flights_data_json)
-    passengers_data = pd.merge(passengers_data, flights_data, left_on='FlightNumber', right_on='FlightNumber', how='left')
-    passengers_data = process_virtual_queue(passengers_data, virtual_queue).sort_values(by='new_ArrivalTime')
-    
-    #run simulation
-    simulation_result_df = multiple_run_simulation(5,40000, passengers_data, security_data)
-    print(simulation_result_df)
-    simulation_result_df["Time in hour"] = simulation_result_df.index/3600
-    non_zero_values = simulation_result_df[simulation_result_df['Average Waiting Time'] != 0]
-    non_zero_count = non_zero_values['Average Waiting Time'].count()
-    average_waiting_time = non_zero_values['Average Waiting Time'].sum() / non_zero_count
-    average_waiting_time_str = f"Average Waiting Time: {average_waiting_time:.2f} seconds"
-    
-    non_zero_values_Virtual = simulation_result_df[simulation_result_df['Average Virtual Queue Waiting Time'] != 0]
-    non_zero_count_Virtual = non_zero_values['Average Virtual Queue Waiting Time'].count()
-    average_Virtual_waiting_time= simulation_result_df['Average Virtual Queue Waiting Time'].sum()/non_zero_count
-    average_Virtual_waiting_time_str = f"Average Virtual Waiting Time: {average_Virtual_waiting_time:.2f} seconds"
-    
-    non_zero_values_Normal = simulation_result_df[simulation_result_df['Average Normal Queue Waiting Time'] != 0]
-    non_zero_count_Normal = non_zero_values['Average Normal Queue Waiting Time'].count()
-    average_Normal_waiting_time=simulation_result_df['Average Normal Queue Waiting Time'].sum()/non_zero_count
-    average_Normal_waiting_time_str =  f"Average Normal Waiting Time: {average_Normal_waiting_time:.2f} seconds"
-    
-    plot_fig = create_time_interval_plot(simulation_result_df)
-
-    return average_waiting_time_str,average_Virtual_waiting_time_str,average_Normal_waiting_time_str,plot_fig
+def openPanel(n_clicks):
+    return True
 
 
+
+# When analysis tab is selected and not all data is uploaded, show error alert and disable run simulation and dropdown for graphs
 @callback(
-    Output('arrival-time-distribution-plot', 'figure'),
-    Input({"section": "intermediate", "type": "dataframe", "index": "arrivals"}, "data"),
-    prevent_initial_call=True
-)
-def update_arrival_time_plot(arrival_data):
-    try:
-        if not arrival_data:
-            return {}
-
-        arrival_df = pd.DataFrame(arrival_data)
-        
-        fig = create_plotly_histogram(arrival_df)
-        return fig
-    except Exception as e:
-        print(f"Error in update_arrival_time_plot: {e}")
-        return {}
+    Output({"section": "analysis", "type": "text", "index": "missing-data"},     "children"),
+    Output({"section": "analysis", "type": "alert", "index": "missing-data"},    "is_open"),
+    Output({"section": "analysis", "type": "button", "index": "run-simulation"}, "disabled"),
+    Output({"section": "analysis", "type": "alert", "index": "missing-data"},    "color"),
+    Output({"section": "analysis", "type": "panel", "index": "sim-selection"},   "is_open"),
     
-@callback(
-    Output('average-waiting-without-time-output', 'children'),
-    Output('waiting-time-without-plot-output', 'figure'),
-    Input('run-simulation-without-button', 'n_clicks'),
-    State({"section": "intermediate", "type": "dataframe", "index": "arrivals"}, "data"),
-    State({"section": "intermediate", "type": "dataframe", "index": "lanes"}, "data"),
+    Input({ "section": "app",          "type": "tabs"},                               "active_tab"),
+    State({ "section": "intermediate", "type": "dataframe", "index": "arrivals"},     "data"),
+    State({ "section": "intermediate", "type": "dataframe", "index": "flights"},      "data"),
+    State({ "section": "intermediate", "type": "dataframe", "index": "lanes"},        "data"),
+    State({ "section": "intermediate", "type": "parameters", "index": "sample-info"}, "data"),
+    State({ "section": "intermediate", "type": "parameters", "index": "time-slots"},  "data"),
+    State({ "section": "inputs", "type": "button", "index": "submit-time-slots"},     "n_clicks"),
+    State({ "section": "analysis", "type": "button", "index": "run-simulation"},      "n_clicks"),
     prevent_initial_call = True
 )
-def update_dashboard_without(n_clicks, passengers_data_json, security_data_json):
-    if n_clicks is None:
-        raise dash.exceptions.PreventUpdate
+def showSimWarning(activeTab, arrivalData, flightData, laneData, distInfo, timeSlotsInfo, clicksSlots, clicksSim):
+    # Check if inputs tab is current tab and whether there are no arrivals uploaded
+    if activeTab != "tab-analysis":
+        return no_update, no_update, no_update, no_update, False
 
+    # Open selection panel if no simulation has run yet
+    openPanel = False
+    if clicksSim == 0 or clicksSim is None:
+        openPanel = True
     
-    passengers_data = pd.DataFrame(passengers_data_json).sort_values(by='ArrivalTime')
-    security_data = pd.DataFrame(security_data_json)
+    if arrivalData == {}:
+        return "Arrival data has not been uploaded yet", True,  True, "danger", openPanel
+    elif flightData == {}:
+        return "Flight schedule has not been uploaded yet", True, True, "danger", openPanel
+    elif laneData == {}:
+        return "Lane schedule has not been uploaded yet", True, True, "danger", openPanel
+    elif latexToNumpy(distInfo["latex"]) is None:
+        return "Service time distribution is not valid", True, True, "danger", openPanel
+    elif clicksSlots == 0 or clicksSlots is None:
+        return "Time slots have not been submitted yet", True,  True, "danger", openPanel
+    elif all(all(not isinstance(cap, int) for cap in timeSlotsInfo[flight]["capacity"]) 
+             for flight in timeSlotsInfo.keys() if flight != "slot-duration"):
+        return "No time slot have been set", True, False, "warning", openPanel
 
-    #run simulation
-    simulation_result_without_df = multiple_run_simulation_without(5,40000, passengers_data, security_data)
-    print(simulation_result_without_df)
-    simulation_result_without_df["Time in hour"] = simulation_result_without_df.index/3600
-    non_zero_values_without = simulation_result_without_df[simulation_result_without_df['Average Waiting Time'] != 0]
-    non_zero_count_without = non_zero_values_without['Average Waiting Time'].count()
-    average_waiting_time_without = non_zero_values_without['Average Waiting Time'].sum() / non_zero_count_without
-    average_waiting_time_without_str = f"Average Waiting Time: {average_waiting_time_without:.2f} seconds"
-    plot_fig_without = create_time_interval_without_plot(simulation_result_without_df)
+    # No error or warning
+    return "", False, False, no_update, openPanel
 
-    return average_waiting_time_without_str,plot_fig_without
+
+
+# Run the simulation
+import pandas as pd
+@callback(
+    Output({"section": "analysis", "type": "text", "index": "sim-avg-total-waiting-min"}, "children"),
+    Output({"section": "analysis", "type": "text", "index": "sim-avg-total-waiting-sec"}, "children"),
+    Output({"section": "analysis", "type": "text", "index": "sim-avg-vq-waiting-min"},    "children"),
+    Output({"section": "analysis", "type": "text", "index": "sim-avg-vq-waiting-sec"},    "children"),
+    Output({"section": "analysis", "type": "text", "index": "sim-avg-gq-waiting-min"},    "children"),
+    Output({"section": "analysis", "type": "text", "index": "sim-avg-gq-waiting-sec"},    "children"),
+    Output({"section": "analysis", "type": "div", "index": "sim-stats"},              "className"),
+    Output({"section": "analysis", "type": "graph", "index": 0},                      "figure"),
+    Output({"section": "analysis", "type": "graph", "index": 0},                      "style"),
+    Output({"section": "analysis", "type": "graph", "index": 1},                      "figure"),
+    Output({"section": "analysis", "type": "graph", "index": 1},                      "style"),
+    Output({"section": "analysis", "type": "graph", "index": 2},                      "figure"),
+    Output({"section": "analysis", "type": "graph", "index": 2},                      "style"),
+    Output({"section": "analysis", "type": "graph", "index": 3},                      "figure"),
+    Output({"section": "analysis", "type": "graph", "index": 3},                      "style"),
+    
+    Input({"section": "analysis", "type": "button", "index": "run-simulation"},      "n_clicks"),
+    State({"section": "analysis", "type": "input", "index": "simulation-runs"},      "value"),
+    State({"section": "intermediate", "type": "dataframe", "index": "arrivals"},     "data"),
+    State({"section": "intermediate", "type": "dataframe", "index": "flights"},      "data"),
+    State({"section": "intermediate", "type": "dataframe", "index": "lanes"},        "data"),
+    State({"section": "intermediate", "type": "parameters", "index": "time-slots"},  "data"),
+    State({"section": "intermediate", "type": "parameters", "index": "lane-cap"},    "data"),
+    State({"section": "intermediate", "type": "parameters", "index": "sample-info"}, "data"),
+    prevent_initial_call = True
+)
+def runSimulation(n_clicks, amountRuns, arrivalData, flightData, laneData, timeSlotsInfo, laneCap, distInfo):
+    # Run simulation with given maximal time and amount of runs
+    
+    slotDuration = timeSlotsInfo["slot-duration"]
+    timeSlots = [slot for slot in timeSlotsInfo if slot != "slot-duration"]
+    print("test2",timeSlots)
+    totalAvgs, allWaitingTimes, missedFlight, waitingPerInverval, avgTotal, avgVQ, avgGQ = multiple_run_simulation(amountRuns, 40000, arrivalData, flightData, laneData, timeSlots, slotDuration, laneCap, distInfo)
+
+    #print("allSimWaitingTimes", allWaitingTimes)
+    print("missedFlight", [(time1, time2) for time1, time2 in zip(missedFlight["ArrivalTime"], missedFlight["new_ArrivalTime"])])
+    print(missedFlight)
+    #print("waiting_time_intervals_minutes", waiting_time_intervals_minutes)
+
+    figure1 = avgWaitingOverTime(
+        totalAvgs["Time in hour"],
+        totalAvgs["Average Waiting Time"],
+        totalAvgs["Average Virtual Queue Waiting Time"],
+        totalAvgs["Average Normal Queue Waiting Time"]
+    )
+    figure2 = cumulativeWaitingTimes([time / 60 for interval in allWaitingTimes for time in interval])
+    figure3 = missedFlightsHist(arrivalData["ArrivalTime"], missedFlight["new_ArrivalTime"])
+
+    # waitingPerInverval are all the waiting times per intervals, so slider for this one
+    
+    figure4 = go.Figure()
+    for i, intervalWaiting in enumerate(waitingPerInverval):        # 15 min
+        figure4.add_trace(
+            go.Histogram(
+                x = intervalWaiting,
+                visible = False,
+                marker = {
+                    "color": "hsv(240,100%,40%)",
+                    "line": {
+                        "width": 1,
+                        "color": "#FFFFFF"
+                    },
+                },
+                hovertemplate = "Waiting time: %{x}<br>Count: %{y}<extra></extra>"
+            )
+        )
+    
+    # Make 10th trace visible
+    figure4.data[10].visible = True
+    
+    # Create and add slider
+    steps = []
+    times = [f"{i//4:02d}:{i*15%60:d}-{(i+1)//4:d}:{(i+1)*15%60:02d}" for i in range(len(figure4.data))]
+    for i in range(len(figure4.data)):
+        step = {
+            "method": "update",
+            "args": [
+                {"visible": [False] * len(figure4.data)},
+                {"title": "Waiting times of time interval: " + times[i]}
+            ],
+            "label": ""
+        }
+        step["args"][0]["visible"][i] = True  # Toggle i'th trace to "visible"
+        steps.append(step)
+    
+    sliders = [{
+        "active": 10,
+        "currentvalue": {
+            "prefix": "Time: ",
+            "font": {
+                "color": "rgba(0,0,0,0)"
+            },
+        },
+        "pad": {"t": 15, "l": 0, "b": 0, "r": 0},
+        "steps": steps
+    }]
+    
+    figure4.update_layout(
+        sliders = sliders,
+        margin = {
+            "l": 0, 
+            "r": 0, 
+            "t": 26,
+            "b": 5,
+            "pad": 0
+        },
+        xaxis = {
+            "title": "Waiting time (min)", 
+            "showgrid": False,
+            "tickformat": "%H:%M"
+        },
+        yaxis = {
+            "title": "Amount of passengers", 
+            "rangemode": "tozero",
+            "showgrid": False,
+        },
+    )
+
+    # Show graphs
+    patchedGraph1 = Patch()
+    patchedGraph2 = Patch()
+    patchedGraph3 = Patch()
+    patchedGraph4 = Patch()
+    patchedGraph1["display"] = "block"
+    patchedGraph2["display"] = "block"
+    patchedGraph3["display"] = "block"
+    patchedGraph4["display"] = "block"
+
+    # Show dropdown and global waiting time statistics using patch
+    patchedDropdown = Patch()
+    patchedStats = Patch()
+    patchedDropdown["display"] = "block"
+    patchedStats["display"] = "block"
+
+    return avgTotal[0], avgTotal[1], avgVQ[0], avgVQ[1], avgGQ[0], avgVQ[1], "d-flex justify-content-evenly", figure1, patchedGraph1, figure2, patchedGraph2, figure3, patchedGraph3, figure4, patchedGraph4
