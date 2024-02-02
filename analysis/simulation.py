@@ -263,7 +263,7 @@ def multiple_run_simulation(runs, sim_time, passengers_data, flights_data, secur
 
     #select miss passengers
     passengers_data_miss = passengers_data[passengers_data["miss_flight"]==1]
-
+    print("miss_flight_information",passengers_data_miss)
     # Convert to dictionaries of structure list per column
     simulation_result_df = simulation_result_df.to_dict(orient = "list")
     passengers_data_miss = passengers_data_miss.to_dict(orient = "list")
